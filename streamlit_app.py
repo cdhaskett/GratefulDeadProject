@@ -4,11 +4,10 @@ import folium
 from folium.plugins import MarkerCluster
 from collections import Counter
 import ast
-from streamlit_folium import folium_static
+from streamlit_folium import st_folium
 
 st.set_page_config(layout="wide", page_title="Grateful Dead Tour Data")
 
-# The stealie (Steal Your Face bolt), embedded so no external files are needed
 STEALIE_URI = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iIzIzMWYyMCIvPgogIDxjbGlwUGF0aCBpZD0iYyI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNDUiLz48L2NsaXBQYXRoPgogIDxnIGNsaXAtcGF0aD0idXJsKCNjKSI+CiAgICA8cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iNTAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMjUzMTdiIi8+CiAgICA8cmVjdCB4PSI1MCIgeT0iMCIgd2lkdGg9IjUwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2VlMWIyYyIvPgogICAgPHBvbHlnb24gcG9pbnRzPSI1Nyw1IDQzLDQ3IDUzLDQ3IDQzLDk1IDY0LDQ1IDUzLDQ1IDYxLDUiIGZpbGw9IiNmZmZmZmYiLz4KICA8L2c+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNDUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIzIi8+Cjwvc3ZnPgo="
 
 @st.cache_data
@@ -34,106 +33,106 @@ def get_song_counts(df):
 
 @st.cache_resource
 def build_map(df):
-    avg_lat = df['Latitude'].mean()
-    avg_lon = df['Longitude'].mean()
-    m = folium.Map(location=[avg_lat, avg_lon], zoom_start=4, tiles="CartoDB dark_matter")
-    marker_cluster = MarkerCluster().add_to(m)
-    for idx, row in df.iterrows():
+    m = folium.Map(location=[39.5, -96], zoom_start=4, tiles="CartoDB dark_matter")
+    cluster = MarkerCluster().add_to(m)
+    for _, row in df.iterrows():
         if pd.notna(row['Latitude']) and pd.notna(row['Longitude']):
             date_str = row['Date'].strftime('%Y-%m-%d') if pd.notna(row['Date']) else 'Unknown'
             year_str = row['Date'].strftime('%Y') if pd.notna(row['Date']) else 'Unknown'
-
             songs = format_setlist(row['Setlist'])
-            if songs:
-                setlist_html = "<br>".join(f"{i}. {s}" for i, s in enumerate(songs, 1))
-            else:
-                setlist_html = "<i>Setlist not available</i>"
-
+            setlist_html = "<br>".join(f"{i}. {s}" for i, s in enumerate(songs, 1)) if songs else "<i>Setlist not available</i>"
             popup_html = (
                 f"<div style='font-family:sans-serif;min-width:210px'>"
                 f"<b>{row['Venue']}</b><br>{row['City']}, {row['State']}<br>"
-                f"<span style='color:#666'>{date_str}</span><hr style='margin:6px 0'>"
-                f"<b>Setlist</b>"
-                f"<div style='max-height:160px;overflow-y:auto;font-size:12px'>{setlist_html}</div>"
-                f"</div>"
+                f"<span style='color:#888'>{date_str}</span><hr style='margin:6px 0'>"
+                f"<b>Setlist</b><div style='max-height:150px;overflow-y:auto;font-size:12px'>{setlist_html}</div></div>"
             )
             folium.Marker(
-                location=[row['Latitude'], row['Longitude']],
+                [row['Latitude'], row['Longitude']],
                 popup=folium.Popup(popup_html, max_width=300),
                 tooltip=f"{row['City']}, {row['State']} - {year_str}",
-                icon=folium.CustomIcon(STEALIE_URI, icon_size=(26, 26))
-            ).add_to(marker_cluster)
+                icon=folium.CustomIcon(STEALIE_URI, icon_size=(24, 24))
+            ).add_to(cluster)
     return m
 
 
 def app():
+    df = load_data()
+    song_counts = get_song_counts(df)
+
+    # --- Header ---
     st.markdown(
-        f"<h1><img src='{STEALIE_URI}' width='60' style='vertical-align:middle;margin-right:14px'/>"
-        f"Grateful Dead Tour Data Explorer</h1>",
+        f"<h1 style='margin-bottom:0'><img src='{STEALIE_URI}' width='56' "
+        f"style='vertical-align:middle;margin-right:14px'/>Grateful Dead Tour Data Explorer</h1>",
         unsafe_allow_html=True
     )
+    st.caption("Every documented show, 1965–1995 · click a stealie on the map or search a date below")
 
-    df_geocoded = load_data()
+    # --- Stat bar ---
+    years = df['Date'].dt.year.dropna()
+    year_range = f"{int(years.min())}–{int(years.max())}" if not years.empty else "—"
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("Shows", f"{len(df):,}")
+    m2.metric("Venues", f"{df['Venue'].nunique():,}")
+    m3.metric("States", df['State'].nunique())
+    m4.metric("Unique Songs", f"{len(song_counts):,}")
+    m5.metric("Years Active", year_range)
 
-    st.header("Concert Locations Map")
-    st.caption("Click any stealie to see the venue, date, and full setlist for that show.")
-    if not df_geocoded.empty:
-        folium_static(build_map(df_geocoded), width=800, height=500)
-    else:
-        st.warning("No geocoded data available to display on the map.")
+    st.divider()
 
-    st.markdown(
-        f"<h2><img src='{STEALIE_URI}' width='38' style='vertical-align:middle;margin-right:10px'/>"
-        f"Explore a Show's Setlist</h2>",
-        unsafe_allow_html=True
-    )
-    df_sorted = df_geocoded.sort_values('Date').reset_index(drop=True)
+    # --- Map + Setlist side by side ---
+    map_col, side_col = st.columns([2, 1], gap="large")
 
-    def show_label(row):
-        d = row['Date'].strftime('%Y-%m-%d') if pd.notna(row['Date']) else 'Unknown date'
-        return f"{d} — {row['Venue']}, {row['City']}, {row['State']}"
+    with map_col:
+        st.subheader("Concert Locations")
+        st_folium(build_map(df), use_container_width=True, height=560, returned_objects=[])
 
-    labels = [show_label(r) for _, r in df_sorted.iterrows()]
-    choice = st.selectbox("Search by typing a date or venue, then pick a show:", labels, key="show_selector")
-    selected = df_sorted.iloc[labels.index(choice)]
+    with side_col:
+        st.subheader("Explore a Show")
+        df_sorted = df.sort_values('Date').reset_index(drop=True)
 
-    songs = format_setlist(selected['Setlist'])
-    if songs:
-        st.write(f"**{len(songs)} songs played:**")
-        for i, s in enumerate(songs, 1):
-            st.write(f"{i}. {s}")
-    else:
-        st.info("No setlist recorded for this show.")
+        def show_label(row):
+            d = row['Date'].strftime('%Y-%m-%d') if pd.notna(row['Date']) else 'Unknown date'
+            return f"{d} — {row['Venue']}, {row['City']}"
 
-    col1, col2, col3 = st.columns(3)
-    song_counts = get_song_counts(df_geocoded)
-    if song_counts:
-        with col1:
-            st.subheader("Top 5 Most Played Songs")
-            for song, count in song_counts.most_common(5):
-                st.write(f"- {song.title()}: {count} times")
-        with col2:
-            st.subheader("5 Least Played Songs (Played Once)")
-            played_once = [s for s, c in song_counts.items() if c == 1]
-            if played_once:
-                for song in played_once[:5]:
-                    st.write(f"- {song.title()}")
+        labels = [show_label(r) for _, r in df_sorted.iterrows()]
+        choice = st.selectbox("Type a date or venue to search:", labels, key="show_selector")
+        selected = df_sorted.iloc[labels.index(choice)]
+        songs = format_setlist(selected['Setlist'])
+
+        with st.container(height=430, border=True):
+            d = selected['Date'].strftime('%B %d, %Y') if pd.notna(selected['Date']) else 'Unknown date'
+            st.markdown(f"**{selected['Venue']}**  \n{selected['City']}, {selected['State']} · {d}")
+            if songs:
+                st.caption(f"{len(songs)} songs played")
+                for i, s in enumerate(songs, 1):
+                    st.write(f"{i}. {s.title()}")
             else:
-                st.write("No songs found that were played only once.")
-    else:
-        with col1:
-            st.warning("No song data to display.")
-        with col2:
-            st.warning("No song data to display.")
+                st.info("No setlist recorded for this show.")
 
-    with col3:
-        st.subheader("Top 5 Cities & States")
-        st.write("**Cities:**")
-        for city, count in df_geocoded['City'].value_counts().nlargest(5).items():
-            st.write(f"- {city}: {count} performances")
-        st.write("**States:**")
-        for state, count in df_geocoded['State'].value_counts().nlargest(5).items():
-            st.write(f"- {state}: {count} performances")
+    st.divider()
+
+    # --- Tour stats in cards ---
+    st.subheader("Tour Stats")
+    s1, s2, s3 = st.columns(3, gap="medium")
+
+    with s1:
+        with st.container(border=True):
+            st.markdown("**🎸 Most Played Songs**")
+            for song, count in song_counts.most_common(8):
+                st.write(f"{song.title()} — **{count}**")
+
+    with s2:
+        with st.container(border=True):
+            st.markdown("**📍 Top Cities**")
+            for city, count in df['City'].value_counts().nlargest(8).items():
+                st.write(f"{city} — **{count}**")
+
+    with s3:
+        with st.container(border=True):
+            st.markdown("**🗺️ Top States**")
+            for state, count in df['State'].value_counts().nlargest(8).items():
+                st.write(f"{state} — **{count}**")
 
 
 if __name__ == '__main__':
