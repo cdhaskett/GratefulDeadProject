@@ -15,7 +15,6 @@ def load_data():
     return df
 
 def format_setlist(setlist_str):
-    """Turn the stored setlist text into a clean list of song names."""
     try:
         songs = ast.literal_eval(str(setlist_str))
         songs = [s.strip() for s in songs if s and s.strip().lower() != 'unknown']
@@ -34,7 +33,7 @@ def get_song_counts(df):
 def build_map(df):
     avg_lat = df['Latitude'].mean()
     avg_lon = df['Longitude'].mean()
-    m = folium.Map(location=[avg_lat, avg_lon], zoom_start=4)
+    m = folium.Map(location=[avg_lat, avg_lon], zoom_start=4, tiles="CartoDB dark_matter")
     marker_cluster = MarkerCluster().add_to(m)
     for idx, row in df.iterrows():
         if pd.notna(row['Latitude']) and pd.notna(row['Longitude']):
@@ -68,7 +67,6 @@ def app():
 
     df_geocoded = load_data()
 
-    # --- Map (click any pin to see that show's setlist) ---
     st.header("Concert Locations Map")
     st.caption("Click any marker to see the venue, date, and full setlist for that show.")
     if not df_geocoded.empty:
@@ -76,7 +74,6 @@ def app():
     else:
         st.warning("No geocoded data available to display on the map.")
 
-    # --- Setlist explorer (search + pick any show) ---
     st.header("🎵 Explore a Show's Setlist")
     df_sorted = df_geocoded.sort_values('Date').reset_index(drop=True)
 
@@ -85,7 +82,7 @@ def app():
         return f"{d} — {row['Venue']}, {row['City']}, {row['State']}"
 
     labels = [show_label(r) for _, r in df_sorted.iterrows()]
-    choice = st.selectbox("Search by typing a date or venue, then pick a show:", labels)
+    choice = st.selectbox("Search by typing a date or venue, then pick a show:", labels, key="show_selector")
     selected = df_sorted.iloc[labels.index(choice)]
 
     songs = format_setlist(selected['Setlist'])
@@ -96,7 +93,6 @@ def app():
     else:
         st.info("No setlist recorded for this show.")
 
-    # --- Stats ---
     col1, col2, col3 = st.columns(3)
     song_counts = get_song_counts(df_geocoded)
     if song_counts:
@@ -127,9 +123,6 @@ def app():
         for state, count in df_geocoded['State'].value_counts().nlargest(5).items():
             st.write(f"- {state}: {count} performances")
 
-
-if __name__ == '__main__':
-    app()
 
 if __name__ == '__main__':
     app()
