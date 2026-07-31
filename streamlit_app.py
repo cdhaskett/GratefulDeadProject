@@ -8,6 +8,9 @@ from streamlit_folium import folium_static
 
 st.set_page_config(layout="wide", page_title="Grateful Dead Tour Data")
 
+# The stealie (Steal Your Face bolt), embedded so no external files are needed
+STEALIE_URI = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iIzIzMWYyMCIvPgogIDxjbGlwUGF0aCBpZD0iYyI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNDUiLz48L2NsaXBQYXRoPgogIDxnIGNsaXAtcGF0aD0idXJsKCNjKSI+CiAgICA8cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iNTAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMjUzMTdiIi8+CiAgICA8cmVjdCB4PSI1MCIgeT0iMCIgd2lkdGg9IjUwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2VlMWIyYyIvPgogICAgPHBvbHlnb24gcG9pbnRzPSI1Nyw1IDQzLDQ3IDUzLDQ3IDQzLDk1IDY0LDQ1IDUzLDQ1IDYxLDUiIGZpbGw9IiNmZmZmZmYiLz4KICA8L2c+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNDUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIzIi8+Cjwvc3ZnPgo="
+
 @st.cache_data
 def load_data():
     df = pd.read_csv('GratefulDead_geocoded.csv')
@@ -57,24 +60,33 @@ def build_map(df):
             folium.Marker(
                 location=[row['Latitude'], row['Longitude']],
                 popup=folium.Popup(popup_html, max_width=300),
-                tooltip=f"{row['City']}, {row['State']} - {year_str}"
+                tooltip=f"{row['City']}, {row['State']} - {year_str}",
+                icon=folium.CustomIcon(STEALIE_URI, icon_size=(26, 26))
             ).add_to(marker_cluster)
     return m
 
 
 def app():
-    st.title("Grateful Dead Tour Data Explorer")
+    st.markdown(
+        f"<h1><img src='{STEALIE_URI}' width='60' style='vertical-align:middle;margin-right:14px'/>"
+        f"Grateful Dead Tour Data Explorer</h1>",
+        unsafe_allow_html=True
+    )
 
     df_geocoded = load_data()
 
     st.header("Concert Locations Map")
-    st.caption("Click any marker to see the venue, date, and full setlist for that show.")
+    st.caption("Click any stealie to see the venue, date, and full setlist for that show.")
     if not df_geocoded.empty:
         folium_static(build_map(df_geocoded), width=800, height=500)
     else:
         st.warning("No geocoded data available to display on the map.")
 
-    st.header("🎵 Explore a Show's Setlist")
+    st.markdown(
+        f"<h2><img src='{STEALIE_URI}' width='38' style='vertical-align:middle;margin-right:10px'/>"
+        f"Explore a Show's Setlist</h2>",
+        unsafe_allow_html=True
+    )
     df_sorted = df_geocoded.sort_values('Date').reset_index(drop=True)
 
     def show_label(row):
@@ -124,5 +136,7 @@ def app():
             st.write(f"- {state}: {count} performances")
 
 
+if __name__ == '__main__':
+    app()
 if __name__ == '__main__':
     app()
