@@ -2,6 +2,8 @@
 
 ![Tests](https://github.com/cdhaskett/GratefulDeadProject/actions/workflows/tests.yml/badge.svg)
 
+**Live app:** https://gdproject.streamlit.app/
+
 An interactive Streamlit project for exploring documented **Grateful Dead concerts from 1965–1995** through geography, venue history, setlists, and song-frequency analysis.
 
 This one is personal on purpose. I wanted a portfolio project built around something I would actually enjoy digging into, while still demonstrating the same workflow I use with business data: **clean the source, structure messy fields, find the useful patterns, and build the output around the questions a person actually wants to answer.**
