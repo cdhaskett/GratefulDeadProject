@@ -2,34 +2,25 @@ import streamlit as st
 import pandas as pd
 import folium
 from folium.plugins import MarkerCluster
-from collections import Counter
-import ast
 from streamlit_folium import st_folium
+
+from tour_data import format_setlist, get_song_counts as calculate_song_counts, load_tour_data
+
 
 st.set_page_config(layout="wide", page_title="Grateful Dead Tour Data")
 
 STEALIE_URI = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iIzIzMWYyMCIvPgogIDxjbGlwUGF0aCBpZD0iYyI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNDUiLz48L2NsaXBQYXRoPgogIDxnIGNsaXAtcGF0aD0idXJsKCNjKSI+CiAgICA8cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iNTAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMjUzMTdiIi8+CiAgICA8cmVjdCB4PSI1MCIgeT0iMCIgd2lkdGg9IjUwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2VlMWIyYyIvPgogICAgPHBvbHlnb24gcG9pbnRzPSI1Nyw1IDQzLDQ3IDUzLDQ3IDQzLDk1IDY0LDQ1IDUzLDQ1IDYxLDUiIGZpbGw9IiNmZmZmZmYiLz4KICA8L2c+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNDUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSIzIi8+Cjwvc3ZnPgo="
 
+
 @st.cache_data
 def load_data():
-    df = pd.read_csv('GratefulDead_geocoded.csv')
-    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-    return df
+    return load_tour_data("GratefulDead_geocoded.csv")
 
-def format_setlist(setlist_str):
-    try:
-        songs = ast.literal_eval(str(setlist_str))
-        songs = [s.strip() for s in songs if s and s.strip().lower() != 'unknown']
-    except (ValueError, SyntaxError):
-        songs = []
-    return songs
 
 @st.cache_data
 def get_song_counts(df):
-    all_songs = []
-    for setlist_str in df['Setlist']:
-        all_songs.extend(format_setlist(setlist_str))
-    return Counter([s.lower() for s in all_songs])
+    return calculate_song_counts(df)
+
 
 @st.cache_resource
 def build_map(df):
